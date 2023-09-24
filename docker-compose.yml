@@ -1,0 +1,63 @@
+version: '3.9'
+services:
+  app:
+    container_name: app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    healthcheck:
+      test: curl -fsS localhost:${PORT}/health
+    environment:
+      - PORT=${PORT}
+      - URL_CONNECT=${URL_CONNECT}
+      - APP_URL=${APP_URL}
+      - CLIENT_URL=${CLIENT_URL}
+    ports:
+      - "${PORT}:${PORT}"
+    depends_on:
+      appdb:
+        condition: service_healthy
+    networks:
+      - livereload
+    restart: always
+  appdev:
+    image: cosmtrek/air
+    container_name: appdev
+    working_dir: /app
+    healthcheck:
+      test: curl -fsS localhost:${PORT}/health
+    ports:
+      - "${PORT}:${PORT}"
+    environment:
+      - PORT=${PORT}
+      - URL_CONNECT=${URL_CONNECT}
+      - APP_URL=${APP_URL}
+      - CLIENT_URL=${CLIENT_URL}
+    depends_on:
+      appdb:
+        condition: service_healthy
+    volumes:
+      - ./:/app/
+    networks:
+      - livereload
+    restart: always
+  appdb:
+    container_name: appdb
+    image: postgres:16.0-alpine3.18
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    env_file: .env
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=${POSTGRES_DB}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - livereload
+networks:
+  livereload:
+    driver: bridge
